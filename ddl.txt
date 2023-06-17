@@ -1,0 +1,11 @@
+// ADDING DATA INTO USERS TABLE // 
+
+INSERT INTO users (full_name, phone_number, email, age, gender, password, is_active, created_at, updated_at)
+VALUES
+    ('John Doe', '1234567890', 'john@example.com', 30, 'Male', 'password123', true, now(), now()),
+    ('Jane Smith', '9876543210', 'jane@example.com', 25, 'Female', 'password456', true, now(), now()),
+    ('Mike Johnson', '5555555555', 'mike@example.com', 35, 'Male', 'password789', true, now(), now()),
+    ('Emily Brown', '9999999999', 'emily@example.com', 28, 'Female', 'passwordabc', true, now(), now());
+
+
+
