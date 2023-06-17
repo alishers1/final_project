@@ -4,37 +4,10 @@ import (
 	"net/http"
 	"posts/config"
 	"posts/models"
+	"posts/repository"
 
 	"github.com/gin-gonic/gin"
 )
-
-func GetUsersByFilter(c *gin.Context) {
-	var users []models.User
-
-	ageFilter := c.Query("age")
-	emailFilter := c.Query("email")
-	fullNameFilter := c.Query("fullname")
-
-	query := config.DB
-	if ageFilter != "" {
-		query = query.Where("age = ?", ageFilter)
-	}
-	if emailFilter != "" {
-		query = query.Where("email = ?", emailFilter)
-	}
-	if fullNameFilter != "" {
-		query = query.Where("full_name LIKE ?", fullNameFilter+"%")
-	}
-
-	if err := query.Find(&users).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, &users)
-}
 
 func CreateUser(c *gin.Context) {
 	var user models.User
@@ -45,14 +18,36 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
-	if err := config.DB.Create(&user).Error; err != nil {
+	id, err := repository.CreateUser(&user)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"reason": "Couldn't create the user",
+			"error": err.Error(),
 		})
 		return
 	}
 
-	c.JSON(201, &user.ID)
+	c.JSON(201, gin.H{
+		"id": id,
+	})
+}
+
+func GetUsersByFilter(c *gin.Context) {
+	var users []models.User
+
+	ageFilter := c.Query("age")
+	emailFilter := c.Query("email")
+	fullNameFilter := c.Query("fullname")
+
+	
+	users, err := repository.GetUsers(ageFilter, emailFilter, fullNameFilter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, &users)
 }
 
 func UpdateUser(c *gin.Context) {
@@ -65,16 +60,28 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 
-	config.DB.Save(&user)
+	if err := repository.UpdateUser(&user); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
 
 	c.JSON(http.StatusOK, &user.ID)
 }
 
 func DeleteUser(c *gin.Context) {
 	var user models.User
-	if err := config.DB.Where("id = ?", c.Param("id")).Delete(&user).Error; err != nil {
+	if err := config.DB.Where("id = ?", c.Param("id")).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"reason": "User not found",
+		})
+		return
+	}
+
+	if err := repository.DeleteUser(&user); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
 		})
 		return
 	}

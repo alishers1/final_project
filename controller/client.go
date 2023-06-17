@@ -4,38 +4,10 @@ import (
 	"net/http"
 	"posts/config"
 	"posts/models"
+	"posts/repository"
 
 	"github.com/gin-gonic/gin"
 )
-
-func GetClientsByFilter(c *gin.Context) {
-	var clients []models.Client
-
-	ageFilter := c.Query("age")
-	emailFilter := c.Query("email")
-	fullNameFilter := c.Query("fullname")
-
-	query := config.DB
-
-	if ageFilter != "" {
-		query = query.Where("age = ?", ageFilter)
-	}
-	if emailFilter != "" {
-		query = query.Where("email = ?", emailFilter)
-	}
-	if fullNameFilter != "" {
-		query = query.Where("full_name LIKE ?", fullNameFilter+"%")
-	}
-
-	if err := query.Find(&clients).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, &clients)
-}
 
 func CreateClient(c *gin.Context) {
 	var client models.Client
@@ -46,14 +18,36 @@ func CreateClient(c *gin.Context) {
 		return
 	}
 
-	if err := config.DB.Create(&client).Error; err != nil {
+	id, err := repository.CreateClient(&client)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
 
-	c.JSON(201, &client.ID)
+	c.JSON(201, gin.H{
+		"id": id,
+	})
+}
+
+func GetClientsByFilter(c *gin.Context) {
+	var clients []models.Client
+
+	phoneNumberFilter := c.Query("phonenumber")
+	ageFilter := c.Query("age")
+	tinFilter := c.Query("email")
+	fullNameFilter := c.Query("fullname")
+
+	clients, err := repository.GetClients(phoneNumberFilter, ageFilter, tinFilter, fullNameFilter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, &clients)
 }
 
 func UpdateClient(c *gin.Context) {
@@ -72,7 +66,12 @@ func UpdateClient(c *gin.Context) {
 		return
 	}
 
-	config.DB.Save(&client)
+	if err := repository.UpdateClient(&client); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
 
 	c.JSON(200, gin.H{
 		"reason": "Information successfully updated",
@@ -81,9 +80,16 @@ func UpdateClient(c *gin.Context) {
 
 func DeleteClient(c *gin.Context) {
 	var client models.Client
-	if err := config.DB.Where("id = ?", c.Param("id")).Delete(&client).Error; err != nil {
+	if err := config.DB.Where("id = ?", c.Param("id")).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"reason": "User not found",
+		})
+		return
+	}
+
+	if err := repository.DeleteClient(&client); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
 		})
 		return
 	}
